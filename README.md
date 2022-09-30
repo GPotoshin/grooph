@@ -1,4 +1,3 @@
-# GROOPH
 v0.0.1
   <div align="left">
   <img src="http://1189.codelabs.ru/0x14/gp/img/grooph_icon.jpg">
@@ -6,10 +5,10 @@ v0.0.1
 Simple library for rendering/drawing pictures
  
 ## Goals
-Create a simple pure C interface for drawing pictures. The idea came to me as I was doing homework for my school IT classes.
+Create a simple pure C interface for drawing pictures. The idea came to me as I was preparing homework for my school IT classes.
  
 ## Compiling
-1) install ```pnglib``` on our machine
+1) install ```pnglib``` on your machine
 2) run ```make```
 
 ## Use
