@@ -26,16 +26,16 @@ bin:
 	mkdir -p bin
 
 bin/grizmos.o: src/tools/grizmos.c src/tools/grizmos.h
-	cc $(CCFLAGS) -c -o $@ src/tools/grizmos.c
+	cc src/tools/grizmos.c $(CCFLAGS) -c -o $@
 
 bin/grooph_essence.o: src/grooph_essence.c src/grooph_essence.h src/grooph_core.h src/grooph_defs.h
-	cc $(CCFLAGS) -c -o $@ src/grooph_essence.c
+	cc src/grooph_essence.c $(CCFLAGS) -c -o $@
 
 bin/grooph_draw.o: src/grooph_draw.c src/grooph_draw.h src/grooph_core.h src/grooph_defs.h
-	cc $(CCFLAGS) -c -o $@ src/grooph_draw.c
+	cc src/grooph_draw.c $(CCFLAGS) -c -o $@
 
 bin/grooph.so: $(OBJECTF)
-	cc $(LDFLAGS) -shared -o $@ $(OBJECTF)
+	cc $(OBJECTF) $(LDFLAGS) -shared -o $@
 
 include:
 	cp src/grooph.h include
