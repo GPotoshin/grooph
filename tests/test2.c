@@ -20,7 +20,7 @@ int main () {
 	}
 
 	GrColor color = {13, 13, 13};
-	grFullBackground (img, color);
+	grFillBackground (img, color);
 
 	int **p = (int* []){(int []){720, 50}, (int []){800, 120}, (int []){1000, 120},
 		(int []){900, 200}, (int []){920, 280}, (int []){720, 240},

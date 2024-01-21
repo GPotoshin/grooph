@@ -6,8 +6,10 @@
 #ifndef GROOPH_CORE_H
 #define GROOPH_CORE_H
 
-#define GR_PNG 1
-#define GR_JPG 2
+enum grooph_file_type {
+    GR_PNG,
+    GR_JPG,
+};
 
 typedef unsigned char GrByte;
 typedef unsigned char * GrBytep;

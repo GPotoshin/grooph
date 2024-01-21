@@ -5,8 +5,11 @@
 #ifndef GRIZMOS_H
 #define GRIZMOS_H
 
+// Makes a copy of string on heap
 char *cstr (const char *str);
+
 int sgn (int x);
-int simple_hash (const char * str);
+
+//int simple_hash (const char * str);
 
 #endif /* GRIZMOS_H */

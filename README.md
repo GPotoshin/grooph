@@ -1,7 +1,4 @@
 v0.0.1
-  <div align="left">
-  <img src="http://1189.codelabs.ru/0x14/gp/img/grooph_icon.jpg">
-</div>
 Simple library for rendering/drawing pictures
  
 ## Goals
@@ -35,7 +32,7 @@ int main () {
 	}
 
 	GrColor color = {13, 13, 13};
-	grFullBackground (img, color);
+	grFillBackground (img, color);
 
 	int p1[2] = {720, 50};
 	int p2[2] = {1182, 850};

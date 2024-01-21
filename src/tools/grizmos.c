@@ -5,27 +5,30 @@
 #include <stdlib.h>
 
 char *cstr (const char *str) {
-	char* retval = NULL;
+	char *retval = NULL;
 
 	int l;
 	for (l = 0; str[l] != 0; l++);
 
 	retval = malloc (sizeof(char) * l);
-	if (!retval)
+	if (!retval) {
 		goto _bailout;
+	}
 
-	for (int i = 0; i <= l; i++)
+	for (int i = 0; i <= l; i++) {
 		*(retval + i) = *(str + i);
+	}
 
 _bailout:
 	return retval;
 }
 
 int sgn (int x) {
-	if (x > 0)
+	if (x > 0) {
 		return 1;
-	if (x == 0)
+	} if (x == 0) {
 		return 0;
+	}
 	return -1;
 }
 /*

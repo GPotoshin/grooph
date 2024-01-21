@@ -5,23 +5,22 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <strings.h>
-#include <math.h>
 
 #include <png.h>
 
-#include "grooph_defs.h"
+#include "../deps/slog/slog.h"
 #include "grooph_core.h"
 #include "grooph_essence.h"
 #include "tools/grizmos.h"
 
-GrImg *grInitImg (int filetype, int colortype,
-			   int interlace, int compression, int filter, char *libver) {
+GrImg *grInitImg (int filetype, int colortype, int interlace, int compression,
+		int filter, char *libver) {
 	void *retval = NULL;
 
-
 	GrImg *img = malloc (sizeof(GrImg));
-	if (!img)
+	if (!img) {
 		goto _bailout;
+	}
 
 	img->filetype = filetype;
 
@@ -37,27 +36,27 @@ GrImg *grInitImg (int filetype, int colortype,
 
 		img->partition = 2;
 
-		img->libver = cstr(libver);
+		img->libver = cstr (libver);
 		if (!img->libver) {
-			GR_LOG_ERROR("grInitImg", "can't copy libver");
+			SLOG_ERROR("grInitImg", "can't copy libver");
 			goto _bailout;
 		}
 
 		img->data = malloc (img->partition * sizeof(size_t));
 		if (!img->data) {
-			GR_LOG_ERROR("grInitImg", "can't alllocate data");
+			SLOG_ERROR("grInitImg", "can't allocate data");
 			goto _bailout;
 		}
 
 		img->data[0] = png_create_write_struct (img->libver, NULL, NULL, NULL);
 		if(!img->data[0]) {
-			GR_LOG_ERROR("grInitImg", "can't create data");
+			SLOG_ERROR("grInitImg", "can't create data");
 			goto _bailout;
 		}
 
 		img->data[1] = png_create_info_struct (img->data[0]);
 		if (!img->data[1]) {
-			GR_LOG_ERROR("grInitImg", "can't create info");
+			SLOG_ERROR("grInitImg", "can't create info");
 			goto _bailout;
 		}
 	}
@@ -105,10 +104,16 @@ void grWriteImg (GrImg *img, FILE *fp) {
 
 
 GrImg *grInitDefaultImg (int filetype) {
-	if (filetype == GR_PNG)
-		return grInitImg (GR_PNG, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
-						  PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE,
-						  PNG_LIBPNG_VER_STRING);
+	if (filetype == GR_PNG) {
+		return grInitImg (
+				GR_PNG,
+				PNG_COLOR_TYPE_RGB,
+				PNG_INTERLACE_NONE,
+				PNG_COMPRESSION_TYPE_BASE,
+				PNG_FILTER_TYPE_BASE,
+				PNG_LIBPNG_VER_STRING);
+	}
+
 	return NULL;
 }
 
@@ -116,11 +121,11 @@ GrImg *grInitDefaultImg (int filetype) {
 int grSetSize (GrImg *img, int width, int height)  {
 	int retval = -1;
 	size_t row_bytes = height * sizeof (GrBytep);
-	size_t col_bytes = width * 3 * sizeof (GrByte);
+	size_t col_bytes = width * 4 * sizeof (GrByte);
 
 	img->rows = malloc (row_bytes);
 	if (!img->rows) {
-		GR_LOG_ERROR("grSetSize", "can't allocate rows");
+		SLOG_ERROR("grSetSize", "can't allocate rows");
 		goto _bailout;
 	}
 
@@ -128,11 +133,10 @@ int grSetSize (GrImg *img, int width, int height)  {
 	for (int i = 0; i < height; i++) {
 		img->rows[i] = malloc (col_bytes);
 		if (!img->rows[i]) {
-			GR_LOG_ERROR("grSetSize", "can't allocate rows[i]");
+			SLOG_ERROR("grSetSize", "can't allocate rows[i]");
 			goto _bailout;
 		}
 	}
-
 
 	img->width = width;
 	img->height = height;
@@ -144,9 +148,11 @@ _bailout:
 	img->height = 0;
 
 	if (img->rows) {
-		for (int i = 0; i < height; i++)
-			if (img->rows[i])
+		for (int i = 0; i < height; i++) {
+			if (img->rows[i]) {
 				free (img->rows[i]);
+			}
+		}
 		free (img->rows);
 	}
 
@@ -159,13 +165,13 @@ int grResetSize (GrImg *img, int width, int height) {
 
 // reserve copy
 	size_t row_bytes = img->height * sizeof (GrBytep);
-	size_t col_bytes = img->width * 3 * sizeof (GrByte);
+	size_t col_bytes = img->width * 4 * sizeof (GrByte);
 
 	GrBytep *r_rows = NULL;
 
 	*r_rows = malloc(row_bytes);
 	if (!r_rows) {
-		GR_LOG_ERROR("grResetSize", "can't allocate r_rows");
+		SLOG_ERROR("grResetSize", "can't allocate r_rows");
 		goto _bailout;
 	}
 
@@ -173,15 +179,15 @@ int grResetSize (GrImg *img, int width, int height) {
 	for (int i = 0; i < img->height; i++) {
 		r_rows[i] = malloc(col_bytes);
 		if (!r_rows[i]) {
-			GR_LOG_ERROR("grResetSize", "can't allocate r_rows[i]");
+			SLOG_ERROR("grResetSize", "can't allocate r_rows[i]");
 			goto _bailout;
 		}
-		strncpy ((char *)r_rows[i], (const char *)img->rows[i], col_bytes);
+		memcpy ((char *)r_rows[i], (const char *)img->rows[i], col_bytes);
 	}
 
 // trying to realloc
 	row_bytes = height * sizeof (GrBytep);
-	col_bytes = width * 3 * sizeof (GrByte);\
+	col_bytes = width * 4 * sizeof (GrByte);\
 
 	void *p = img->rows;
 	img->rows = realloc (img->rows, row_bytes);
@@ -195,8 +201,8 @@ int grResetSize (GrImg *img, int width, int height) {
 	for (int i = 0; i < height; i++) {
 		p = img->rows[i];
 		img->rows[i] = realloc (img->rows[i], col_bytes);
-		if (!img->rows[i]){
-			GR_LOG_ERROR("grResetSize", "can't reallocate rows[i]");
+		if (!img->rows[i]) {
+			SLOG_ERROR("grResetSize", "can't reallocate rows[i]");
 			img->rows[i] = p;
 			goto _bailout;
 		}
@@ -210,8 +216,9 @@ int grResetSize (GrImg *img, int width, int height) {
 
 _bailout:
 	for (int i = 0; i < row_bytes; i++) {
-		if (img->rows[i])
+		if (img->rows[i]) {
 			free (img->rows[i]);
+		}
 	}
 	free(img->rows);
 	img->rows = r_rows;
