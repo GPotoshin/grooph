@@ -12,7 +12,7 @@
 #include "grooph_draw.h"
 
 // a hack to do sorting depending on state that cannot be passed to compare fn
-static const int ** array_copy;
+static const int * array_copy;
 
 int grFillBackground (GrImg *img, GrColor color) {
 	int retval = -1;
@@ -176,12 +176,12 @@ int grDrawCircle (GrImg *img, int p[2], uint32_t radius, GrColor color, uint32_t
 
 // the following fns are needed for grDrawPolygon
 static int compare_y (const void *a, const void *b) {
-	const int *ia = a;
-	const int *ib = b;
+	const int ia = *(int *)a;
+	const int ib = *(int *)b;
 
-	if ((array_copy[*ia])[1] > (array_copy[*ib])[1]) {
+	if (array_copy[2*ia+1] > array_copy[2*ib+1]) {
 		return 1;
-	} else if ((array_copy[*ia])[1] < (array_copy[*ib])[1]) {
+	} else if (array_copy[2*ia+1] < array_copy[2*ib+1]) {
 		return -1;
 	}
 	return 0;
@@ -191,11 +191,11 @@ static int compare_line_x (const void *a, const void *b) {
 	const int *ia = a;
 	const int *ib = b;
 
-	if ((array_copy[ia[0]])[0] > (array_copy[ib[0]])[0] ||
-			array_copy[ia[1]][0] > array_copy[ib[1]][0]) {
+	if (array_copy[2*ia[0]] > array_copy[2*ib[0]] ||
+			array_copy[2*ia[1]] > array_copy[2*ib[1]]) {
 		return 1;
-	} else if ((array_copy[ia[0]])[0] < (array_copy[ib[0]])[0] ||
-			(array_copy[ia[1]])[0] < (array_copy[ib[1]])[0]) {
+	} else if (array_copy[2*ia[0]] < array_copy[2*ib[0]] ||
+			array_copy[2*ia[1]] < array_copy[2*ib[1]]) {
 		return -1;
 	}
 	return 0;
@@ -207,22 +207,23 @@ static inline int modulo (int n, int base) {
 	return ans;
 }
 
-int grDrawPolygon (GrImg *img, const int **p, const int n, GrColorScheme *scheme) {
-	array_copy = p;
+int grDrawPolygon (GrImg *img, const int *verts, const int n, GrColorScheme *scheme) {
 	int retval = -1;
-	int *a = malloc (n*sizeof(int));
-	if (!a) {
-		SLOG_ERROR("grDrawPolygon", "can't allocate a");
+	array_copy = verts;
+	int *indices = malloc (n*sizeof(int));
+	if (!indices) {
+		SLOG_ERROR("grDrawPolygon", "can't allocate memory for indices");
 		goto _bailout;
 	}
 
 	retval = -2;
 
-	for (int i = 0; i < n; i++)
-		a[i] = i;
+	for (int i = 0; i < n; i++) {
+		indices[i] = i;
+	}
 
 	// compare function depends on array_copy
-	qsort (a, n, sizeof(int), &compare_y);
+	qsort (indices, n, sizeof(int), &compare_y);
 
 	// polygon is devided into horizontal trapeziums
 	// side is reprezented by two points
@@ -240,10 +241,10 @@ int grDrawPolygon (GrImg *img, const int **p, const int n, GrColorScheme *scheme
 	retval = -3;
 
 	for (int i = 0; i < n;) {
-		if ((p[a[i]])[1] == (p[a[n-1]])[1]) break;
+		if (verts[2*indices[i]+1] == verts[2*indices[n-1]+1]) break;
 
 		for (int j = 0; j < line_count; j += 2) {
-			if ((p[line[j+1]])[1] <= (p[a[i]])[1]) {
+			if (verts[2*line[j+1]+1] <= verts[2*indices[i]+1]) {
 				for (int k = j+2; k < line_count; k++) {
 					line[k-2] = line[k];
 				}
@@ -260,8 +261,8 @@ int grDrawPolygon (GrImg *img, const int **p, const int n, GrColorScheme *scheme
 			}
 		}
 		int j;
-		for (j = i; (p[a[i]])[1] == (p[a[j]])[1] && j < n; j++) {
-			if ((p[ (a[j]+1)%n ])[1] > (p[a[i]])[1]) {
+		for (j = i; verts[2*indices[i]+1] == verts[2*indices[j]+1] && j < n; j++) {
+			if (verts[2*((indices[j]+1)%n)+1] > verts[2*indices[i]+1]) {
 				if (line_count == line_buf_size) {
 					line_buf_size += BUF_DELTA;
 					void *p = realloc (line, line_buf_size*sizeof(int));
@@ -271,11 +272,11 @@ int grDrawPolygon (GrImg *img, const int **p, const int n, GrColorScheme *scheme
 					}
 					line = p;
 				}
-				line[line_count] = a[j];
-				line[line_count+1] = (a[j]+1)%n;
+				line[line_count] = indices[j];
+				line[line_count+1] = (indices[j]+1)%n;
 				line_count += 2;
 			}
-			if ((p[modulo(a[j]-1, n)])[1] > (p[a[i]])[1]) {
+			if (verts[2*modulo(indices[j]-1, n)+1] > verts[2*indices[i]+1]) {
 				if (line_count == line_buf_size) {
 					line_buf_size += BUF_DELTA;
 					void *p = realloc (line, line_buf_size*sizeof(int));
@@ -285,8 +286,8 @@ int grDrawPolygon (GrImg *img, const int **p, const int n, GrColorScheme *scheme
 					}
 					line = p;
 				}
-				line[line_count] = a[j];
-				line[line_count+1] = modulo (a[j]-1, n);
+				line[line_count] = indices[j];
+				line[line_count+1] = modulo (indices[j]-1, n);
 				line_count += 2;
 			}
 		}
@@ -298,15 +299,15 @@ int grDrawPolygon (GrImg *img, const int **p, const int n, GrColorScheme *scheme
 		//		putchar ('\n');
 
 		for (int l = 0; l < line_count; l += 3) {
-			double c1 = (double)((p[line[l+1]])[0] - (p[line[l]])[0]) /
-				((p[line[l+1]][1]) - (p[line[l]])[1]);
-			double d1 = (double)(p[line[l]])[0] - c1*(p[line[l]])[1];
+			double c1 = (double)(verts[2*line[l+1]] - verts[2*line[l]]) /
+				((verts[2*line[l+1]+1]) - verts[2*line[l]+1]);
+			double d1 = (double)verts[2*line[l]] - c1*verts[2*line[l]+1];
 
-			double c2 = (double)((p[line[l+3]])[0] - (p[line[l+2]])[0]) /
-				((p[line[l+3]])[1] - (p[line[l+2]])[1]);
-			double d2 = (double)(p[line[l+2]])[0] - c2*(p[line[l+2]])[1];
+			double c2 = (double)(verts[2*line[l+3]] - verts[2*line[l+2]]) /
+				(verts[2*line[l+3]+1] - verts[2*line[l+2]+1]);
+			double d2 = (double)verts[2*line[l+2]] - c2*verts[2*line[l+2]+1];
 
-			for (int k = (p[a[i]])[1]; k < (p[a[j]])[1] && k < img->height; k++) {
+			for (int k = verts[2*indices[i]+1]; k < verts[2*indices[j]+1] && k < img->height; k++) {
 				GrByte *bp = img->rows[k];
 				for (int m = c1*k + d1; m <= c2*k + d2 && m < img->width; m++) {
 					bp[m*3] = 50;
@@ -318,10 +319,10 @@ int grDrawPolygon (GrImg *img, const int **p, const int n, GrColorScheme *scheme
 		i = j;
 	}
 	// last line
-	if ((p[line[1]])[1] < img->height) {
-		GrByte *bp = img->rows[(p[line[1]])[1]];
+	if (verts[2*line[1]+1] < img->height) {
+		GrByte *bp = img->rows[verts[2*line[1]+1]];
 		for (int l = 0; l < line_count; l += 3) {
-			for (int k = (p[line[l+1]])[0]; k <= (p[line[l+3]])[0] && k < img->width; k++) {
+			for (int k = verts[2*line[l+1]]; k <= verts[2*line[l+3]] && k < img->width; k++) {
 				bp[k*3] = 50;
 				bp[k*3+1] = 55;
 				bp[k*3+2] = 55;
@@ -331,8 +332,12 @@ int grDrawPolygon (GrImg *img, const int **p, const int n, GrColorScheme *scheme
 	retval = 0;
 _bailout:
 
-	if (a) free (a);
-	if (line) free (line);
+	if (indices) {
+		free (indices);
+	}
+	if (line) {
+		free (line);
+	}
 
 	return retval;
 }

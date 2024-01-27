@@ -6,6 +6,11 @@
 #ifndef GROOPH_CORE_H
 #define GROOPH_CORE_H
 
+enum gr_result {
+    GR_SUCCESS,
+    GR_OUT_OF_MEMORY,
+};
+
 enum grooph_file_type {
     GR_PNG,
     GR_JPG,
