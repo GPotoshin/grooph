@@ -117,6 +117,10 @@ GrImg *grInitDefaultImg (int filetype) {
 	return NULL;
 }
 
+GrColor grInitColor (int r, int g, int b) {
+	GrColor color = {r, g, b};
+	return color;
+}
 
 int grSetSize (GrImg *img, int width, int height)  {
 	int retval = -1;

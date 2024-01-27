@@ -20,6 +20,9 @@ void grWriteImg (GrImg *img, FILE *fp);
 // Creates default image for type passed
 GrImg *grInitDefaultImg (int filetype);
 
+// creater for GrColor structure
+GrColor grInitColor (int r, int g, int b);
+
 // Sets size and allocates memory for image representation
 int grSetSize (GrImg *img, int width, int height);
 

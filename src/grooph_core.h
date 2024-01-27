@@ -6,8 +6,6 @@
 #ifndef GROOPH_CORE_H
 #define GROOPH_CORE_H
 
-const char * grooph_version = "0.0.2";
-
 enum grooph_file_type {
     GR_PNG,
     GR_JPG,

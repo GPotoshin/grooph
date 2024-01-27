@@ -1,4 +1,4 @@
-v0.0.2
+v0.0.3
 Simple library for rendering/drawing pictures
  
 ## Goals

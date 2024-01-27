@@ -1,4 +1,4 @@
-.PHONY: bin clean all include test
+.PHONY: bin clean all include test install
 
 CCFLAGS += -pipe -O2 -g -fPIC
 LDFLAGS += -lm -lpng
@@ -54,6 +54,14 @@ tests/t2: all tests/test2.c
 
 tests: tests/t1 tests/t2
 
+install: lib/libgrooph.so include
+	rm -rf /usr/local/include/grooph /usr/local/lib/libgrooph.so
+	ln -s $(CURDIR)/lib/libgrooph.so /usr/local/lib/
+	mkdir -p /usr/local/include/grooph
+	ln -s $(CURDIR)/include/grooph.h /usr/local/include/grooph
+	ln -s $(CURDIR)/include/grooph_draw.h /usr/local/include/grooph
+	ln -s $(CURDIR)/include/grooph_core.h /usr/local/include/grooph
+	ln -s $(CURDIR)/include/grooph_essence.h /usr/local/include/grooph
 
 clean:
 	rm -f $(OBJECTF) bin/grooph.so tests/t1 tests/t2 lib/libgrooph.so test1.png test2.png

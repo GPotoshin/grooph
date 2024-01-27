@@ -224,11 +224,6 @@ int grDrawPolygon (GrImg *img, const int **p, const int n, GrColorScheme *scheme
 	// compare function depends on array_copy
 	qsort (a, n, sizeof(int), &compare_y);
 
-	//	printf ("!a:\n");
-	//	for (int i = 0; i < n; i++)
-	//		printf ("%d: (%d, %d)\n", i, (p[a[i]])[0], (p[a[i]])[1]);
-	//	putchar ('\n');
-
 	// polygon is devided into horizontal trapeziums
 	// side is reprezented by two points
 	// and top is counted with i, while (i+1) is bottom
