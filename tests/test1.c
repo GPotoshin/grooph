@@ -2,20 +2,20 @@
 #include "../include/grooph.h"
 
 int main () {
+	int *err = 0;
 	FILE *fp = fopen ("test1.png", "wb");
 	if (!fp) {
 		printf ("Can't open file!\n");
 		return 0;
 	}
 
-	GrImg *img = grInitDefaultImg (GR_PNG);
+	GrImage *img = grInitImage(1440, 900, NULL);
 	if (!img) {
 		printf ("Can't init image\n");
 		goto _bailout;
 	}
-
-	if (grSetSize (img, 1440, 900)) {
-		printf ("grSetSize: Can't allocate memory!\n");
+	grAddDefaultPngToImage(img, err);
+	if (err != GR_SUCCESS) {
 		goto _bailout;
 	}
 
@@ -45,11 +45,11 @@ int main () {
 	p1[1] = 583;
 	puts ("circle: center {720, 583} and radius 266");
 	grDrawCircle (img, p1, 266, color, 3);
-	grWriteImg (img, fp);
+	grWriteImage(img, fp);
 
 _bailout:
 	if (img) {
-		grDestroyImg (img);
+		grDestroyObject ((GrEmptyObject **)&img);
 	}
 	if (fp) {
 		fclose (fp);

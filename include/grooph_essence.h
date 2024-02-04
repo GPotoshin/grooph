@@ -8,25 +8,27 @@
 #include <stdio.h>
 #include "grooph_core.h"
 
-// Creates an image representation. Use grInitDefaultImg if you do not need finer control
-GrImg *grInitImg (int filetype, int colortype, int intarelace, int compression, int filter, char *libver);
+// Creates an image representation. Use grInitDefaultImage if you do not need finer control
+GrImage *grInitImage (int width, int height, int *err);
 
-// Destroys image representation
-void grDestroyImg (GrImg *img);
+// Inits a structure that uses libpng to represent a png file
+GrPng *grInitPng (int width, int height, int bit_depth, int color_type,
+        int interlace_method, int compression_method, int filter_method,
+        int *err);
+
+// Shortcut ro add png to image
+void grAddDefaultPngToImage (GrImage *image, int *err);
+
+// Universal object destroyer
+void grDestroyObject (GrEmptyObject **obj);
 
 // Writes image representation to a file
-void grWriteImg (GrImg *img, FILE *fp);
-
-// Creates default image for type passed
-GrImg *grInitDefaultImg (int filetype);
+void grWriteImage (GrImage *img, FILE *fp);
 
 // creater for GrColor structure
 GrColor grInitColor (int r, int g, int b);
 
-// Sets size and allocates memory for image representation
-int grSetSize (GrImg *img, int width, int height);
-
 // Resets size and reallocates memory image representation
-int grResetSize (GrImg *img, int width, int height);
+int grResetSize (GrImage *img, int width, int height);
 
 #endif /* GROOPH_ESSENCE_H */

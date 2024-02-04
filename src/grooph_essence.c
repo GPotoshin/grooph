@@ -11,110 +11,160 @@
 #include "../deps/slog/slog.h"
 #include "grooph_core.h"
 #include "grooph_essence.h"
-#include "tools/grizmos.h"
 
-GrImg *grInitImg (int filetype, int colortype, int interlace, int compression,
-		int filter, char *libver) {
-	void *retval = NULL;
+void grDestroyObject (GrEmptyObject **obj) {
+	if (obj == NULL) {
+		return;
+	}
 
-	GrImg *img = malloc (sizeof(GrImg));
-	if (!img) {
+	if (*obj == NULL) {
+		return;
+	}
+
+	switch ((*obj)->type) {
+		case GR_IMAGE_STRUCTURE:
+			;GrImage *img = (GrImage *) *obj;
+			if (img->rows) {
+				for (int i = 0; i < img->height; i++) {
+					if (img->rows[i]) {
+						free(img->rows[i]);
+					}
+				}
+				free(img->rows);
+			}
+			break;
+
+		case GR_PNG_STRUCTURE:
+			;GrPng *png = (GrPng *) *obj;
+			png_destroy_write_struct(&png->png_ptr, &png->info_ptr);
+			break;
+	}
+	grDestroyObject((GrEmptyObject**)&(*obj)->pNext);
+	free (*obj);
+	*obj = NULL;
+}
+
+
+GrImage *grInitImage (int width, int height, int *err) {
+	GrImage *retval = malloc (sizeof(GrImage));
+	if (!retval) {
+		SLOG_ERROR("grInitImage", "can't allocate memory for GrImage");
+		if (err) {
+			*err = GR_OUT_OF_MEMORY_ERROR;
+		}
 		goto _bailout;
 	}
 
-	img->filetype = filetype;
+	retval->pNext = NULL;
+	retval->type = GR_IMAGE_STRUCTURE;
 
-	img->width = 0;
-	img->height = 0;
-	img->rows = NULL;
-
-	if (filetype == GR_PNG) {
-		img->colortype = colortype;
-		img->interlace = interlace;
-		img->compression = compression;
-		img->filter = filter;
-
-		img->partition = 2;
-
-		img->libver = cstr (libver);
-		if (!img->libver) {
-			SLOG_ERROR("grInitImg", "can't copy libver");
-			goto _bailout;
+	retval->rows = calloc (height, sizeof(GrBytep));
+	if (!retval->rows) {
+		SLOG_ERROR("grInitImage", "can't allocate memory for rows");
+		if (err) {
+			*err = GR_OUT_OF_MEMORY_ERROR;
 		}
-
-		img->data = malloc (img->partition * sizeof(size_t));
-		if (!img->data) {
-			SLOG_ERROR("grInitImg", "can't allocate data");
-			goto _bailout;
-		}
-
-		img->data[0] = png_create_write_struct (img->libver, NULL, NULL, NULL);
-		if(!img->data[0]) {
-			SLOG_ERROR("grInitImg", "can't create data");
-			goto _bailout;
-		}
-
-		img->data[1] = png_create_info_struct (img->data[0]);
-		if (!img->data[1]) {
-			SLOG_ERROR("grInitImg", "can't create info");
+		goto _bailout;
+	}
+	for (int i = 0; i < height; i++) {
+		retval->rows[i] = calloc (width*4, sizeof(GrByte));
+		if (!retval->rows[i]) {
+			SLOG_ERROR("grInitImage", "can't allocate memory for a row");
+			if (err) {
+				*err = GR_OUT_OF_MEMORY_ERROR;
+			}
 			goto _bailout;
 		}
 	}
 
-	retval = img;
-	return retval;
+	retval->height = height;
+	retval->width = width;
 
+	return retval;
 _bailout:
-	grDestroyImg (img);
+	grDestroyObject ((GrEmptyObject **) &retval);
+	return NULL;
+}
+
+
+GrPng *grInitPng (int width, int height, int bit_depth, int color_type,
+		int interlace_method, int compression_method, int filter_method,
+		int *err) {
+	GrPng *retval = malloc (sizeof(GrPng));
+
+	retval->pNext = NULL;
+	retval->type = GR_PNG_STRUCTURE;
+
+	if (!retval) {
+		SLOG_ERROR("grInitPng", "can't allocate memory for GrPng");
+		if (err) {
+			*err = GR_OUT_OF_MEMORY_ERROR;
+		}
+		goto _bailout;
+	}
+
+	retval->png_ptr = png_create_write_struct (
+			PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+	if (!retval->png_ptr) {
+		SLOG_ERROR("grInitPng", "can't allocate memory for png_structure");
+		if (err) {
+			*err = GR_OUT_OF_MEMORY_ERROR;
+		}
+		goto _bailout;
+	}
+
+	retval->info_ptr = png_create_info_struct (retval->png_ptr);
+	if (!retval->info_ptr) {
+		SLOG_ERROR("grInitPng", "can't create memory for png_info");
+		if (err) {
+			*err = GR_OUT_OF_MEMORY_ERROR;
+		}
+		goto _bailout;
+	}
+
+	png_set_IHDR (retval->png_ptr, retval->info_ptr, width, height, bit_depth,
+			color_type, interlace_method, compression_method, filter_method);
+
 	return retval;
-}
-
-
-void grDestroyImg (GrImg *img) {
-	if (img) {
-		if (img->libver)
-			free (img->libver);
-		if (img->rows) {
-			for (int i = 0; i < img->height; i++)
-				if (img->rows[i])
-					free (img->rows[i]);
-			free (img->rows);
-		}
-		if (img->data) {
-			for (int i = 0; i < img->partition; i++)
-				if (img->data[i])
-					free (img->data[i]);
-			free (img->data);
-		}
-
-		free (img);
-	}
-}
-
-
-void grWriteImg (GrImg *img, FILE *fp) {
-	if (img->filetype == GR_PNG) {
-		png_init_io (img->data[0], fp);
-		png_set_IHDR (img->data[0], img->data[1], img->width, img->height, 8,
-			img->colortype, img->interlace, img->compression, img->filter);
-		png_write_info (img->data[0], img->data[1]);
-		png_write_image (img->data[0], img->rows);
-	}
-}
-
-
-GrImg *grInitDefaultImg (int filetype) {
-	if (filetype == GR_PNG) {
-		return grInitImg (
-				GR_PNG,
-				PNG_COLOR_TYPE_RGB,
-				PNG_INTERLACE_NONE,
-				PNG_COMPRESSION_TYPE_BASE,
-				PNG_FILTER_TYPE_BASE,
-				PNG_LIBPNG_VER_STRING);
-	}
+_bailout:
+	grDestroyObject ((GrEmptyObject **)&retval);
 
 	return NULL;
+}
+
+void grAddDefaultPngToImage (GrImage *image, int *err) {
+	if (!image) {
+		SLOG_ERROR("grAddDefaultPngToImage", "pointer to image is NULL");
+		if (err) {
+			*err = GR_NULL_POINTER_ERROR;
+		}
+		return ;
+	}
+	image->pNext = grInitPng(image->width, image->height, 8,
+			PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE,
+			PNG_FILTER_TYPE_BASE, err);
+}
+
+void grWriteImage (GrImage *img, FILE *fp) {
+	if (!img->pNext) {
+		SLOG_WARNING("grWriteImage",
+			"You did not specify output format, the corisponding structure\n"
+			"should be passed to pNext. For example: imgp->pNext = pngp");
+		return;
+	}
+
+	GrEmptyObject *obj = img->pNext;
+
+	switch (obj->type) {
+		case GR_PNG_STRUCTURE:
+			;GrPng *png = (void *)obj;
+			png_init_io (png->png_ptr, fp);
+			png_write_info (png->png_ptr, png->info_ptr);
+			png_write_image (png->png_ptr, img->rows);
+			break;
+		default:
+			SLOG_WARNING("grWriteImage", "bad file type from image");
+	}
 }
 
 GrColor grInitColor (int r, int g, int b) {
@@ -122,49 +172,7 @@ GrColor grInitColor (int r, int g, int b) {
 	return color;
 }
 
-int grSetSize (GrImg *img, int width, int height)  {
-	int retval = -1;
-	size_t row_bytes = height * sizeof (GrBytep);
-	size_t col_bytes = width * 4 * sizeof (GrByte);
-
-	img->rows = malloc (row_bytes);
-	if (!img->rows) {
-		SLOG_ERROR("grSetSize", "can't allocate rows");
-		goto _bailout;
-	}
-
-	bzero (img->rows, row_bytes);
-	for (int i = 0; i < height; i++) {
-		img->rows[i] = malloc (col_bytes);
-		if (!img->rows[i]) {
-			SLOG_ERROR("grSetSize", "can't allocate rows[i]");
-			goto _bailout;
-		}
-	}
-
-	img->width = width;
-	img->height = height;
-
-	retval = 0;
-	return retval;
-_bailout:
-	img->width = 0;
-	img->height = 0;
-
-	if (img->rows) {
-		for (int i = 0; i < height; i++) {
-			if (img->rows[i]) {
-				free (img->rows[i]);
-			}
-		}
-		free (img->rows);
-	}
-
-	return retval;
-}
-
-
-int grResetSize (GrImg *img, int width, int height) {
+int grResetSize (GrImage *img, int width, int height) {
 	int retval = -1;
 
 // reserve copy

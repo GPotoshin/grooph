@@ -3,7 +3,6 @@
 // grooph_draw.c: implementation of fns for drawing
 
 #include <stdlib.h>
-#include <stdio.h>
 #include <strings.h>
 #include <math.h>
 
@@ -14,7 +13,7 @@
 // a hack to do sorting depending on state that cannot be passed to compare fn
 static const int * array_copy;
 
-int grFillBackground (GrImg *img, GrColor color) {
+int grFillBackground (GrImage *img, GrColor color) {
 	int retval = -1;
 	if (!img->rows) {
 		SLOG_ERROR("grFillBackground", "image representation does not have allocated memory");
@@ -22,13 +21,45 @@ int grFillBackground (GrImg *img, GrColor color) {
 	}
 
 	retval = -2;
-	if (img->filetype == GR_PNG) {
-		for (int j = 0; j < img->height; j++) {
-			if (!img->rows[j]) {
-				SLOG_ERROR("grFillBackground", "not all rows are allocated");
-				goto _bailout;
-			}
-			for (int i = 0; i < img->width; i++) {
+	for (int j = 0; j < img->height; j++) {
+		if (!img->rows[j]) {
+			SLOG_ERROR("grFillBackground", "not all rows are allocated");
+			goto _bailout;
+		}
+		for (int i = 0; i < img->width; i++) {
+			GrBytep bp = img->rows[j] + i*3;
+			bp[0] = color.red;
+			bp[1] = color.green;
+			bp[2] = color.blue;
+		}
+	}
+
+	retval = 0;
+_bailout:
+	return retval;
+}
+
+
+int grPutDot (GrImage *img, int center[2], GrColor color, int radius) {
+	int retval = -1;
+	if (!img->rows) {
+		SLOG_ERROR("grPutDot", "image representation does not have allocated memory");
+		goto _bailout;
+	};
+
+	retval = -2;
+	int top = fmax (0, center[1] - radius);
+	int bottom = fmin (img->height, center[1] + radius);
+	int left = fmax (0, center[0] - radius);
+	int right = fmin (img->width, center[0] + radius);
+	for (int j = top; j <= bottom; j++) {
+		if (!img->rows[j]) {
+			SLOG_ERROR("grPutDot", "not all rows are allocated");
+			goto _bailout;
+		}
+		for (int i = left; i <= right; i++) {
+			if (((i-center[0])*(i-center[0]) + (j-center[1])*(j-center[1])
+						< radius*radius)) {
 				GrBytep bp = img->rows[j] + i*3;
 				bp[0] = color.red;
 				bp[1] = color.green;
@@ -42,43 +73,7 @@ _bailout:
 	return retval;
 }
 
-
-int grPutDot (GrImg *img, int center[2], GrColor color, uint32_t radius) {
-	int retval = -1;
-	if (!img->rows) {
-		SLOG_ERROR("grPutDot", "image representation does not have allocated memory");
-		goto _bailout;
-	};
-
-	retval = -2;
-	if (img->filetype == GR_PNG) {
-		int top = fmax (0, center[1] - radius);
-		int bottom = fmin (img->height, center[1] + radius);
-		int left = fmax (0, center[0] - radius);
-		int right = fmin (img->width, center[0] + radius);
-		for (int j = top; j <= bottom; j++) {
-			if (!img->rows[j]) {
-				SLOG_ERROR("grPutDot", "not all rows are allocated");
-				goto _bailout;
-			}
-			for (int i = left; i <= right; i++) {
-				if (((i-center[0])*(i-center[0]) + (j-center[1])*(j-center[1])
-						< radius*radius)) {
-					GrBytep bp = img->rows[j] + i*3;
-					bp[0] = color.red;
-					bp[1] = color.green;
-					bp[2] = color.blue;
-				}
-			}
-		}
-	}
-
-	retval = 0;
-_bailout:
-	return retval;
-}
-
-int grDrawLine (GrImg *img, int a[2], int b[2], GrColor color, uint32_t width) {
+int grDrawLine (GrImage *img, int a[2], int b[2], GrColor color, int width) {
 	// printf ("(%d, %d)----(%d, %d)\n", a[0], a[1], b[0], b[1]);
 	// equation is k1*x + k2*y = const
 	if (a[0] == b[0]) {
@@ -163,7 +158,7 @@ int grDrawLine (GrImg *img, int a[2], int b[2], GrColor color, uint32_t width) {
 	return 0;
 }
 
-int grDrawCircle (GrImg *img, int p[2], uint32_t radius, GrColor color, uint32_t width) {
+int grDrawCircle (GrImage *img, int p[2], int radius, GrColor color, int width) {
 	int v[2];
 	double dt = 1.4 / radius;
 	for (double t = 0; t < 2 * M_PI; t += dt) {
@@ -207,7 +202,7 @@ static inline int modulo (int n, int base) {
 	return ans;
 }
 
-int grDrawPolygon (GrImg *img, const int *verts, const int n, GrColorScheme *scheme) {
+int grDrawPolygon (GrImage *img, const int *verts, const int n, GrColorScheme *scheme) {
 	int retval = -1;
 	array_copy = verts;
 	int *indices = malloc (n*sizeof(int));
